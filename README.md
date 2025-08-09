@@ -36,7 +36,7 @@ ReelSieve est un outil open source qui scanne ta bibliothèque de films et séri
 📦 Installation
 1) Récupérer le projet
 
-git clone https://github.com/<TON_COMPTE>/reelsieve.git
+git clone https://github.com/noxmoze/ReelSieve.git
 cd reelsieve
 
 2) Créer et éditer la config

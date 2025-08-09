@@ -60,55 +60,62 @@ python -m app.cli dedupe --dry-run
 
 # Appliquer la déduplication
 python -m app.cli dedupe --apply
+```
 
 🐳 Installation avec Docker Compose
 1️⃣ Configuration de base
-
+```bash
 cp config.example.yaml config.yaml
+```
 # Modifier config.yaml pour votre bibliothèque
 
 2️⃣ Ollama en local
-
+```bash
 docker compose up -d ollama
 docker exec -it $(docker ps -qf name=ollama) ollama pull mistral
-
+```
 Modifier config.yaml :
-
+```bash
 base_url: http://host.docker.internal:11434
-
+```
 Copier le fichier :
-
+```bash
 cp docker-compose.ollama-local.yaml docker-compose.yaml
 docker compose build
-
+```
 3️⃣ Ollama sur un autre serveur
 
 Modifier config.yaml :
-
+```bash
 base_url: http://adresse_du_serveur:11434
-
+```
 Copier le fichier :
-
+```bash
 cp docker-compose.ollama-server-externe.yaml docker-compose.yaml
 docker compose build
-
+```
 📦 Commandes Docker
 
 # 1) Scan des fichiers
+```bash
 docker compose run --rm media-dedupe python -m app.cli scan
-
+```
 # 2) Analyse LLM
+```bash
 docker compose run --rm media-dedupe python -m app.cli guess
-
+```
 # 3) Rapport des doublons
+```bash
 docker compose run --rm media-dedupe python -m app.cli report
-
+```
 # 4) Déduplication en dry-run
+```bash
 docker compose run --rm media-dedupe python -m app.cli dedupe --dry-run
-
+```
 # 5) Appliquer la déduplication
+```bash
 docker compose run --rm media-dedupe python -m app.cli dedupe --apply
-
+```
 📂 Base de données
 
     Fichier : data/media.db

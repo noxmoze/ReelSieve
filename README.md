@@ -39,96 +39,107 @@ ReelSieve est un outil open source qui scanne ta bibliothèque de films et séri
 git clone https://github.com/noxmoze/ReelSieve.git
 cd reelsieve
 
-2) Créer et éditer la config
+Installation (sans Docker)
 
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 cp config.example.yaml config.yaml
+# Modifier config.yaml en fonction de vos chemins
+python -m app.cli scan
+python -m app.cli guess
+python -m app.cli dedupe --dry-run
+# Pour appliquer les déplacements :
+python -m app.cli dedupe --apply
 
-Exemple :
+Installation avec Docker Compose
+Configuration de base
 
-media_dirs:
-  - /media/Films
-  - /media/Series
+    Copier config.example.yaml en config.yaml.
 
-quarantine_dir: /media/_doublons
-database_path: data/media.db
+    Modifier config.yaml pour indiquer l’emplacement de votre bibliothèque média.
 
-llm:
-  base_url: http://ollama:11434   # ou http://host.docker.internal:11434 si Ollama sur l’hôte
-  model: mistral
-  options: { temperature: 0.1, num_predict: 200 }
+Avec Ollama en local
 
-scoring:
-  prefer_resolution: [2160, 1080, 720, 480]
-  prefer_video_codec: [hevc, h265, av1, h264]
-  bonus_audio_langs: ["fre","fra","fr"]
-  quarantine_days: 14
+    Lancer le conteneur Ollama et télécharger un modèle :
 
-🚀 Utilisation
-Option A – Ollama intégré dans Docker
+docker compose up -d ollama
+docker exec -it $(docker ps -qf name=ollama) ollama pull mistral
 
-# Lancer Ollama et tirer le modèle
-docker compose -f docker-compose.ollama.yml up -d ollama
-docker compose -f docker-compose.ollama.yml exec ollama ollama pull mistral
+    Dans config.yaml, modifier l’URL Ollama :
 
-# Build
-docker compose -f docker-compose.ollama.yml build
+base_url: http://host.docker.internal:11434
 
-# Scan
-docker compose -f docker-compose.ollama.yml run --rm app python -m app.cli scan
+    Copier docker-compose.ollama-local.yaml en docker-compose.yaml.
 
-# Identification LLM
-docker compose -f docker-compose.ollama.yml run --rm app python -m app.cli guess
+    Construire l’image :
 
-# Rapport
-docker compose -f docker-compose.ollama.yml run --rm app python -m app.cli report
+docker compose build
 
-# Simulation de déduplication
-docker compose -f docker-compose.ollama.yml run --rm app python -m app.cli dedupe --dry-run
+Avec Ollama sur un autre serveur
 
-# Déduplication réelle
-docker compose -f docker-compose.ollama.yml run --rm app python -m app.cli dedupe --apply
+    Dans config.yaml, indiquer l’URL du serveur Ollama :
 
-Option B – Ollama déjà sur l’hôte
+base_url: http://adresse_du_serveur:11434
 
-    Utiliser docker-compose.localollama.yml
+    Copier docker-compose.ollama-server-externe.yaml en docker-compose.yaml.
 
-    Dans config.yaml, mettre base_url: http://host.docker.internal:11434 (Windows/Mac) ou ajouter extra_hosts sur Linux
+    Construire l’image :
 
-📊 Exemple de sortie
+docker compose build
 
-[GUESS] ./Films/22 Jump Street (2014)/... -> {'type': 'movie', 'title': '22 Jump Street (2014)', 'year': 2014}
-[GUESS] ./Films/22 Jump Street (2014) MULTi/... -> {'type': 'movie', 'title': '22 Jump Street (2014)', 'year': 2014}
+Commandes Docker
 
-[REPORT]
-Titre                | Année | Chemin
--------------------- | ----- | ---------------------------------
-22 Jump Street       | 2014  | ./Films/22 Jump Street (2014)/...
-                     |       | ./Films/22 Jump Street (2014) MULTi/...
+    Scan des fichiers (ffprobe + hash + DB)
 
-[DEDUP DRY-RUN]
-Garde: ./Films/22 Jump Street (2014)/...
-Déplace: ./Films/22 Jump Street (2014) MULTi/... -> /media/_doublons
+docker compose run --rm media-dedupe python -m app.cli scan
 
-⚙️ Prérequis
+    Analyse LLM (titre/année/type/épisode)
 
-    Docker et Docker Compose
+docker compose run --rm media-dedupe python -m app.cli guess
 
-    ffmpeg/ffprobe (installé dans le conteneur)
+    Rapport des doublons détectés
 
-    Accès Internet pour télécharger le modèle LLM (Mistral par défaut)
+docker compose run --rm media-dedupe python -m app.cli report
 
-🔒 Sécurité
+    Déduplication en DRY-RUN (aucun déplacement)
 
-    Aucun fichier supprimé automatiquement : les doublons vont dans quarantine_dir
+docker compose run --rm media-dedupe python -m app.cli dedupe --dry-run
 
-    Tu peux tester en --dry-run avant d’appliquer
+    Appliquer la déduplication (déplacement vers le dossier de quarantaine)
 
-🗺 Roadmap (Phase 2)
+docker compose run --rm media-dedupe python -m app.cli dedupe --apply
 
-    Intégration API TMDb pour fiabiliser les métadonnées
+Informations Docker
 
-    Interface web légère
+    Le fichier docker-compose.yml installe ffmpeg et lance l’application avec config.yaml.
 
-    Support direct Radarr/Sonarr
+    Pensez à monter vos dossiers médias dans le conteneur.
 
-    Matching multi-critères (hash vidéo + nom + durée)
+Commandes disponibles
+
+    scan : parcourt les dossiers, extrait les métadonnées et remplit la DB.
+
+    guess : utilise le LLM pour déduire titre, année, type, SxxExx.
+
+    dedupe : génère un rapport ; avec --apply, déplace les doublons vers quarantine_dir.
+
+Base de données
+
+    Fichier SQLite : data/media.db
+
+    Tables :
+
+        files
+
+        decisions
+
+Sécurité
+
+    Par défaut, mode dry-run (aucune modification).
+
+    L’option --apply déplace uniquement les fichiers vers quarantine_dir (aucune suppression).
+
+Prochaines étapes (Phase 2)
+
+    Intégration TMDb (API + cache local) et RAG pour fiabiliser les identifications.
